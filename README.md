@@ -27,68 +27,19 @@ This project aims let you use your own computer to process text into SQL dataset
 
 ## Usage
 
-Describe how to use the app once it's running. Focus on the key user flows.
-
-```
-# Basic example — replace with a real code or CLI snippet if relevant
-open https://your-demo-url.com
-```
+Working later on adding a pipeline to injest content automatically from Email handler and SMS handler, as well as outjest to Calender systems. Too tired rn.
 
 ### Key features
 
-- **Feature one** — brief explanation of what it does and why it's useful.
-- **Feature two** — brief explanation of what it does and why it's useful.
-- **Feature three** — brief explanation of what it does and why it's useful.
-
-### Examples
-
-**Example 1: Doing the main thing**
-
-Walk through a common use case step by step. Include code blocks, screenshots, or GIFs where helpful.
-
-```js
-// Example code snippet
-const result = doSomethingCool({ option: true });
-console.log(result);
-```
-
-**Example 2: A more advanced use case**
-
-Another example for power users or a less obvious feature.
-
-```js
-// Another snippet
-import { feature } from 'your-package';
-feature.configure({ advanced: true });
-```
-
----
-
-## Tech stack
-
-| Layer | Technology |
-|---|---|
-| Framework | [React](https://react.dev) / [Next.js](https://nextjs.org) |
-| Styling | [Tailwind CSS](https://tailwindcss.com) |
-| State | [Zustand](https://zustand-demo.pmnd.rs) |
-| Hosting | [Vercel](https://vercel.com) |
-
-> Update this table to match your actual stack.
-
----
-
-## Getting started
-
-### Prerequisites
-
-- Node.js 18+
-- npm or pnpm
+- **Feature one** — Full Local and Private.
+- **Feature two** — You can process highly complex datasets into easily manageable SQL bins.
+- **Feature three** — It's free.
 
 ### Installation
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/your-username/your-repo.git
+git clone [https://github.com/your-username/your-repo.git](https://github.com/kepler444a-f/VibezCSM)
 cd your-repo
 
 # 2. Install dependencies
@@ -98,50 +49,16 @@ npm install
 cp .env.example .env.local
 
 # 4. Start the dev server
-npm run dev
+Simply Click run on the WebUIServer.py for Modern UI and StartProgram.py for OldUI.
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
----
-
-## Roadmap
-
-- [x] Initial release
-- [ ] Feature in progress
-- [ ] Planned feature
-- [ ] Another planned feature
-
-See [open issues](https://github.com/your-username/your-repo/issues) for the full list.
-
----
-
-## Contributing
-
-Contributions are welcome! Please open an issue first to discuss what you'd like to change.
-
-1. Fork the repo
-2. Create your branch (`git checkout -b feature/my-feature`)
-3. Commit your changes (`git commit -m 'Add my feature'`)
-4. Push to the branch (`git push origin feature/my-feature`)
-5. Open a pull request
-
----
+Open [http://localhost:8080/](http://localhost:8080/)) in your browser.
 
 ## License
 
 Distributed under the MIT License. See [`LICENSE`](./LICENSE) for details.
 
----
-
-## Acknowledgements
-
-- [Library or resource you used](https://example.com)
-- [Inspiration or reference](https://example.com)
-- Anyone you want to thank
-
----
 
 <div align="center">
-Made with ❤️ by <a href="https://github.com/your-username">your-username</a>
+Made with ❤️ by <a href="[https://github.com/your-username](https://github.com/kepler444a-f)">Kepler-444f</a>
 </div>
