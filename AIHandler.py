@@ -1,4 +1,3 @@
-import argparse
 import json
 import os
 import sqlite3
@@ -9,17 +8,35 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parent
 CONTEXT_FILE = ROOT / "ContextWindow"
-INCOMING_FILE = ROOT / "IncomingText"
 DATABASE_FILE = ROOT / "vibez_csm.sqlite3"
 DEFAULT_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5-coder:1.5b-base")
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
 
 
-def read_text_file(path: Path) -> str:
-    """Read a text file safely and return the contents."""
-    if not path.exists():
-        return ""
-    return path.read_text(encoding="utf-8").strip()
+def reset_ollama_context(host: str = OLLAMA_HOST) -> bool:
+    """
+    Optional: Explicitly reset Ollama's context by sending an empty prompt.
+    This ensures any cached conversation state is cleared.
+    
+    Use this between message batches if you want absolute certainty of isolation.
+    """
+    try:
+        payload = {
+            "model": DEFAULT_MODEL,
+            "prompt": "",  # Empty prompt to reset
+            "stream": False,
+        }
+        request = urllib.request.Request(
+            f"{host}/api/generate",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json", "Connection": "close"},
+            method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=10) as response:
+            response.read()
+        return True
+    except Exception:
+        return False
 
 
 def normalize_json(raw_text: str, context_text: str = "", incoming_text: str = "") -> dict[str, Any]:
@@ -97,7 +114,11 @@ def sanitize_structured_output(output: dict[str, Any], context_text: str, incomi
 
 
 def call_ollama(prompt: str, model: str, host: str = OLLAMA_HOST, context_text: str = "", incoming_text: str = "") -> dict[str, Any]:
-    """Send a prompt to the local Ollama server and return parsed JSON."""
+    """
+    Send a FRESH, STATELESS prompt to the local Ollama server.
+    Each call is completely independent with no session/memory.
+    """
+    # Create a fresh payload for this isolated message
     payload = {
         "model": model,
         "prompt": prompt,
@@ -105,19 +126,29 @@ def call_ollama(prompt: str, model: str, host: str = OLLAMA_HOST, context_text: 
         "format": "json",
         "options": {
             "temperature": 0.2,
+            "top_k": 40,
+            "top_p": 0.9,
+            "repeat_penalty": 1.0,
+            "num_ctx": 2048,  # Fresh context window for each message
         },
     }
 
+    # Create a fresh HTTP request (no session reuse)
     request = urllib.request.Request(
         f"{host}/api/generate",
         data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
+        headers={
+            "Content-Type": "application/json",
+            "Connection": "close",  # Force close connection after response
+        },
         method="POST",
     )
 
     try:
+        # Fresh connection - no reuse
         with urllib.request.urlopen(request, timeout=180) as response:
             data = json.loads(response.read().decode("utf-8"))
+            # The response is completely fresh for this message
             return normalize_json(data.get("response", "{}"), context_text, incoming_text)
     except urllib.error.URLError as exc:
         raise RuntimeError(f"Unable to reach Ollama at {host}. Details: {exc}") from exc
@@ -175,50 +206,102 @@ def save_result(connection: sqlite3.Connection, structured_output: dict[str, Any
 
 
 def build_prompt(context_text: str, incoming_text: str) -> str:
-    """Create a prompt that asks the model for structured JSON output."""
-    return f"""Extract data and return ONLY this JSON (no explanation, no markdown):
+    """
+    Create an isolated prompt for a single message.
+    Explicitly instructs AI to ignore any previous context/memory.
+    """
+    return f"""IMPORTANT: This is a STANDALONE message. Process ONLY this message independently.
+Forget any previous messages or context. This is a NEW, ISOLATED analysis.
 
-{{"name": "Elena Rostova", "motivation_score": 0.9, "motivation_reasoning": "high urgency, distressed tone, needs solution in 30-60 days", "entities": {{"property_address": "1984 Sequoia Court", "locations": ["out of state"], "organizations": []}}, "key_details": {{"tenant_status": "non-paying for 2 months", "timeframe": "30-60 days", "condition": "needs cosmetic updates", "willingness": "cash buyer negotiation"}}, "tags": ["property sale", "urgent", "tenant issues"]}}
+SYSTEM INSTRUCTION (from ContextWindow):
+{context_text}
 
-INSTRUCTION: Read the incoming text and extract similar JSON. Find:
-- name: person's name
-- motivation_score: 0-1 (0=low, 1=high urgency)  
-- property_address: address mentioned
-- key_details: important facts
-
-INCOMING TEXT:
+CURRENT MESSAGE TO ANALYZE (treat as completely independent):
 {incoming_text}
 
-Return valid JSON only:
+Your task: Extract structured data from ONLY the current message above.
+Do NOT reference, remember, or use any previous messages.
+Do NOT maintain conversation history.
+
+Return ONLY valid JSON (no explanation, no code fence, no markdown):
+
+{{
+  "name": "extracted name or empty",
+  "motivation_score": 0.0,
+  "motivation_reasoning": "brief reason",
+  "entities": {{
+    "property_address": "address if mentioned",
+    "locations": [],
+    "organizations": []
+  }},
+  "key_details": {{}},
+  "tags": []
+}}
+
+RULES:
+- Analyze ONLY the current message
+- Score 0-1: 0=low interest, 1=high urgency
+- If information missing, use empty values
+- Return JSON only
 """
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Read the text inputs, ask Ollama for structured JSON, and store it in SQLite.")
-    parser.add_argument("--model", default=DEFAULT_MODEL, help="Ollama model name to use (default: %(default)s)")
-    parser.add_argument("--host", default=OLLAMA_HOST, help="Ollama base URL (default: %(default)s)")
-    args = parser.parse_args()
-
-    model_name = args.model
-    host_url = args.host
-
-    context_text = read_text_file(CONTEXT_FILE)
-    incoming_text = read_text_file(INCOMING_FILE)
-
-    print(f"Reading inputs from: {CONTEXT_FILE.name} and {INCOMING_FILE.name}")
-    print(f"Using Ollama model: {model_name}")
-
+def process_message(incoming_text: str, model: str = DEFAULT_MODEL, host: str = OLLAMA_HOST) -> dict[str, Any]:
+    """
+    Process a SINGLE, INDEPENDENT message with NO memory or state carryover.
+    
+    Each call:
+    - Reads context fresh from file (no cached context)
+    - Creates a new Ollama connection
+    - Treats the message as completely isolated
+    - Saves to database as a new, independent record
+    
+    Args:
+        incoming_text: The message to process (completely independent of all other messages)
+        model: The Ollama model to use
+        host: The Ollama host URL
+    
+    Returns:
+        Dictionary with extraction data (completely independent result)
+    """
+    # ✅ FRESH context read - not cached, not preserved from previous calls
+    context_text = CONTEXT_FILE.read_text(encoding="utf-8").strip() if CONTEXT_FILE.exists() else ""
+    
+    # ✅ ISOLATED prompt - explicitly tells AI to forget previous context
     prompt = build_prompt(context_text, incoming_text)
-    structured_output = call_ollama(prompt, model_name, host_url, context_text, incoming_text)
-
+    
+    # ✅ FRESH Ollama connection - no session reuse, complete isolation
+    structured_output = call_ollama(prompt, model, host, context_text, incoming_text)
+    
+    # ✅ NEW database record - completely independent entry with timestamp
     connection = create_database(DATABASE_FILE)
     try:
         save_result(connection, structured_output)
+        structured_output["db_status"] = "saved"
+        structured_output["message_isolation"] = "✅ Complete - message treated as independent instance"
+    except Exception as e:
+        structured_output["db_status"] = f"error: {str(e)}"
     finally:
         connection.close()
+    
+    return structured_output
 
-    print(f"Structured JSON saved to: {DATABASE_FILE}")
-    print(json.dumps(structured_output, indent=2, ensure_ascii=False))
+
+def main() -> None:
+    """Legacy CLI interface - reads from ContextWindow and processes."""
+    context_text = CONTEXT_FILE.read_text(encoding="utf-8").strip() if CONTEXT_FILE.exists() else ""
+    
+    # Read incoming text from stdin or file
+    import sys
+    print("Enter incoming text (end with Ctrl+D on Unix or Ctrl+Z on Windows):")
+    incoming_text = sys.stdin.read().strip()
+    
+    if not incoming_text:
+        print("No input provided. Use process_message() function instead.")
+        return
+    
+    result = process_message(incoming_text)
+    print(json.dumps(result, indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":
