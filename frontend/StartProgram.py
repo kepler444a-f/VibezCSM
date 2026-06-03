@@ -1,8 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-from DataBaseManager import DataBaseManager
-from BasicUIManager import UIManager
-from AIReasoning import AIHandler
+from frontend.DataBaseManager import DataBaseManager
+from frontend.BasicUIManager import UIManager
+from frontend.AIReasoning import AIHandler
 
 class Launcher:
     def __init__(self, root, ai_handler):

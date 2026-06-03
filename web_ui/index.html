@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VibezCSM — Real Estate Lead AI Processor</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0f1117;
+      --surface:  #1a1d27;
+      --surface2: #23273a;
+      --border:   #2e3350;
+      --accent:   #4f8ef7;
+      --accent2:  #7c3aed;
+      --green:    #22c55e;
+      --red:      #ef4444;
+      --amber:    #f59e0b;
+      --text:     #e2e8f0;
+      --muted:    #8892a4;
+      --radius:   10px;
+      --font:     'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    header .logo {
+      font-size: 18px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    header .subtitle { color: var(--muted); font-size: 12px; }
+
+    #model-badge {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      background: rgba(34,197,94,0.12);
+      border: 1px solid rgba(34,197,94,0.3);
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    #model-badge .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s infinite;
+    }
+    #model-badge.offline {
+      background: rgba(239,68,68,0.12);
+      border-color: rgba(239,68,68,0.3);
+      color: var(--red);
+    }
+    #model-badge.offline .dot { background: var(--red); animation: none; }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    @keyframes spin  { to{transform:rotate(360deg)} }
+
+    /* ── Layout ── */
+    .workspace {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Left panel ── */
+    .left-panel {
+      width: 360px;
+      min-width: 300px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 20px;
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      background: var(--surface);
+    }
+    .field-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 13px;
+      padding: 10px 12px;
+      resize: vertical;
+      transition: border-color .15s;
+      line-height: 1.5;
+    }
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(79,142,247,.15);
+    }
+    #context-box { height: 90px; }
+    #prompt-box  { height: 210px; }
+
+    select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 13px;
+      padding: 9px 12px;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238892a4' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      cursor: pointer;
+    }
+    select:focus { outline: none; border-color: var(--accent); }
+
+    #submit-btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity .15s, transform .1s;
+    }
+    #submit-btn:hover:not(:disabled) { opacity: .9; transform: translateY(-1px); }
+    #submit-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    /* ── Ollama warning banner ── */
+    #ollama-warning {
+      display: none;
+      background: rgba(239,68,68,.1);
+      border: 1px solid rgba(239,68,68,.3);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      color: #f87171;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    #ollama-warning.show { display: block; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 20px;
+      font-size: 13px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.4);
+      transition: transform .3s ease;
+      z-index: 999;
+      max-width: 500px;
+      text-align: center;
+      word-break: break-word;
+    }
+    #toast.show  { transform: translateX(-50%) translateY(0); }
+    #toast.error { border-color: var(--red);   color: #f87171; }
+    #toast.ok    { border-color: var(--green); color: #4ade80; }
+
+    /* ── Right panel ── */
+    .right-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      overflow: hidden;
+    }
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .panel-title  { font-size: 15px; font-weight: 700; }
+    .lead-count   { font-size: 12px; color: var(--muted); margin-left: 8px; }
+
+    #refresh-btn {
+      padding: 7px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    #refresh-btn:hover { border-color: var(--accent); background: rgba(79,142,247,.08); }
+    .refresh-icon { font-size: 14px; }
+    .spinning .refresh-icon { animation: spin .6s linear infinite; display:inline-block; }
+
+    /* ── Table ── */
+    .table-wrap {
+      flex: 1;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead {
+      position: sticky; top: 0;
+      background: var(--surface2);
+      z-index: 1;
+    }
+    th {
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(46,51,80,.5);
+      vertical-align: top;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: rgba(79,142,247,.05); }
+    .id-cell { color: var(--muted); font-size: 11px; width: 40px; }
+
+    .score-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .score-high { background: rgba(239,68,68,.15);  color: #f87171; }
+    .score-mid  { background: rgba(245,158,11,.15); color: #fbbf24; }
+    .score-low  { background: rgba(34,197,94,.12);  color: #4ade80; }
+    .score-none { background: rgba(136,146,164,.1); color: var(--muted); }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      color: var(--muted);
+      gap: 10px;
+    }
+    .empty-icon { font-size: 36px; }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div>
+    <div class="logo">VibezCSM</div>
+    <div class="subtitle">Real Estate Lead AI Processor</div>
+  </div>
+  <div id="model-badge">
+    <span class="dot"></span>
+    <span id="active-model-label">Loading…</span>
+  </div>
+</header>
+
+<!-- Main workspace — always visible immediately -->
+<div class="workspace">
+
+  <!-- Left panel -->
+  <div class="left-panel">
+
+    <div id="ollama-warning">
+      ⚠ Could not reach Ollama. Make sure it is running
+      (<code>ollama serve</code>) then click
+      <a href="#" onclick="loadModels(); return false;"
+         style="color:inherit;text-decoration:underline;">Retry</a>.
+    </div>
+
+    <div>
+      <div class="field-label">AI Model</div>
+      <select id="model-select">
+        <option value="">— no models found —</option>
+      </select>
+    </div>
+
+    <div>
+      <div class="field-label">1. Additional Context (Optional rules)</div>
+      <textarea id="context-box" placeholder="e.g. Focus only on sellers in California…"></textarea>
+    </div>
+
+    <div>
+      <div class="field-label">2. Paste Lead Message / Email Here</div>
+      <textarea id="prompt-box" placeholder="Paste the lead message or email here…"></textarea>
+    </div>
+
+    <button id="submit-btn" onclick="processLead()">⚡ Process Lead</button>
+
+  </div>
+
+  <!-- Right panel -->
+  <div class="right-panel">
+    <div class="panel-header">
+      <div>
+        <span class="panel-title">Extracted Lead Database</span>
+        <span class="lead-count" id="lead-count"></span>
+      </div>
+      <button id="refresh-btn" onclick="refreshLeads()">
+        <span class="refresh-icon">↻</span> Refresh
+      </button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Date</th>
+            <th>Urgency &amp; Intent</th>
+            <th>Motivation</th>
+            <th>Timeline</th>
+            <th>Location</th>
+            <th>Contact</th>
+          </tr>
+        </thead>
+        <tbody id="leads-tbody">
+          <tr><td colspan="8">
+            <div class="empty-state">
+              <span class="empty-icon">📋</span>
+              <span>Loading…</span>
+            </div>
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+  // ── Fetch helpers ──────────────────────────────────────────────────────────
+
+  async function apiFetch(path, opts) {
+    const res = await fetch(path, opts || {});
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    return data;
+  }
+
+  // ── Load models (called on startup and on retry) ───────────────────────────
+
+  async function loadModels() {
+    var badge   = document.getElementById('model-badge');
+    var label   = document.getElementById('active-model-label');
+    var warning = document.getElementById('ollama-warning');
+    var sel     = document.getElementById('model-select');
+
+    label.textContent = 'Connecting…';
+
+    try {
+      var data = await apiFetch('/api/models');
+      var models = data.models || [];
+
+      if (models.length === 0) {
+        throw new Error('Ollama is running but no models are installed. Run: ollama pull llama3');
+      }
+
+      sel.innerHTML = models.map(function(m) {
+        return '<option value="' + m + '">' + m + '</option>';
+      }).join('');
+
+      label.textContent = 'Active: ' + sel.value;
+      badge.classList.remove('offline');
+      warning.classList.remove('show');
+
+      sel.onchange = function() {
+        label.textContent = 'Active: ' + sel.value;
+      };
+
+    } catch (err) {
+      label.textContent = 'Ollama offline';
+      badge.classList.add('offline');
+      warning.classList.add('show');
+      console.error('loadModels error:', err);
+    }
+  }
+
+  // ── Refresh leads table ────────────────────────────────────────────────────
+
+  async function refreshLeads() {
+    var btn = document.getElementById('refresh-btn');
+    btn.classList.add('spinning');
+
+    try {
+      var data = await apiFetch('/api/leads');
+      renderLeads(data.leads || []);
+    } catch (err) {
+      showToast('Could not load leads: ' + err.message, 'error');
+      console.error('refreshLeads error:', err);
+    } finally {
+      btn.classList.remove('spinning');
+    }
+  }
+
+  function renderLeads(leads) {
+    var tbody = document.getElementById('leads-tbody');
+    var count = document.getElementById('lead-count');
+
+    if (!leads.length) {
+      tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><span class="empty-icon">📋</span><span>No leads yet.</span></div></td></tr>';
+      count.textContent = '';
+      return;
+    }
+
+    count.textContent = '(' + leads.length + ' record' + (leads.length !== 1 ? 's' : '') + ')';
+
+    tbody.innerHTML = leads.map(function(l) {
+      return '<tr>' +
+        '<td class="id-cell">' + l.id + '</td>' +
+        '<td title="' + esc(l.name) + '">' + esc(l.name) + '</td>' +
+        '<td title="' + esc(l.date_submitted) + '">' + esc(l.date_submitted) + '</td>' +
+        '<td title="' + esc(l.urgency_intent) + '">' + esc(l.urgency_intent) + '</td>' +
+        '<td>' + scoreBadge(l.motivation_score) + '</td>' +
+        '<td title="' + esc(l.timeline) + '">' + esc(l.timeline) + '</td>' +
+        '<td title="' + esc(l.location) + '">' + esc(l.location) + '</td>' +
+        '<td title="' + esc(l.contact_number) + '">' + esc(l.contact_number) + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  // ── Process lead ───────────────────────────────────────────────────────────
+
+  async function processLead() {
+    var model   = document.getElementById('model-select').value;
+    var context = document.getElementById('context-box').value.trim();
+    var prompt  = document.getElementById('prompt-box').value.trim();
+
+    if (!prompt) { showToast('Lead message cannot be empty.', 'error'); return; }
+    if (!model)  { showToast('No model selected — is Ollama running?', 'error'); return; }
+
+    var btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Analyzing…';
+
+    try {
+      await apiFetch('/api/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: model, context: context, prompt: prompt })
+      });
+      showToast('Lead processed and saved!', 'ok');
+      await refreshLeads();
+    } catch (err) {
+      showToast(err.message, 'error');
+      console.error('processLead error:', err);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '⚡ Process Lead';
+    }
+  }
+
+  // ── Utilities ──────────────────────────────────────────────────────────────
+
+  function scoreBadge(raw) {
+    if (!raw || raw === 'Not provided') return '<span class="score-badge score-none">—</span>';
+    var num = parseInt(raw, 10);
+    var cls = num >= 7 ? 'score-high' : num >= 4 ? 'score-mid' : 'score-low';
+    return '<span class="score-badge ' + cls + '">' + esc(raw) + '</span>';
+  }
+
+  function esc(str) {
+    if (!str) return '—';
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  var toastTimer;
+  function showToast(msg, type) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'show' + (type ? ' ' + type : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function() { t.className = ''; }, 5000);
+  }
+
+  // ── Boot — UI renders immediately, data loads after ───────────────────────
+  loadModels();
+  refreshLeads();
+</script>
+</body>
+</html>
