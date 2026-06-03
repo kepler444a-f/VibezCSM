@@ -1,7 +1,7 @@
 <div align="center">
 
 <!-- Replace with your project logo or banner -->
-<img src="https://placehold.co/120x120/6366f1/ffffff?text=Logo" alt="Project Logo" width="120" height="120" style="border-radius: 16px;" />
+<img src="https://github.com/kepler444a-f/VibezCSM/blob/main/VibezCSM.png" alt="Project Logo" width="120" height="120" style="border-radius: 16px;" />
 
 <h1>Project Name</h1>
 
@@ -20,8 +20,8 @@ This project aims let you use your own computer to process text into SQL dataset
 <!-- Replace with real screenshots -->
 | Feature | Preview |
 |---|---|
-| Modern Web UI | ![Screenshot 1](https://placehold.co/600x360/f8fafc/334155?text=Screenshot+1) |
-| Tkinter Python UI [Backup] | ![Screenshot 2](https://placehold.co/600x360/f8fafc/334155?text=Screenshot+2) |
+| Modern Web UI | ![Screenshot 1]([https://placehold.co/600x360/f8fafc/334155?text=Screenshot+1](https://github.com/kepler444a-f/VibezCSM/blob/main/modernvibezcsmui.png)) |
+| Tkinter Python UI [Backup] | ![Screenshot 2]([https://placehold.co/600x360/f8fafc/334155?text=Screenshot+2](https://github.com/kepler444a-f/VibezCSM/blob/main/oldvibezcsmui.png)) |
 
 ---
 
