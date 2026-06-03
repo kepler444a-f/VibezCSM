@@ -20,8 +20,8 @@ This project aims let you use your own computer to process text into SQL dataset
 <!-- Replace with real screenshots -->
 | Feature | Preview |
 |---|---|
-| Modern Web UI | ![Screenshot 1]([https://placehold.co/600x360/f8fafc/334155?text=Screenshot+1](https://github.com/kepler444a-f/VibezCSM/blob/main/modernvibezcsmui.png)) |
-| Tkinter Python UI [Backup] | ![Screenshot 2]([https://placehold.co/600x360/f8fafc/334155?text=Screenshot+2](https://github.com/kepler444a-f/VibezCSM/blob/main/oldvibezcsmui.png)) |
+| Modern Web UI | ![Screenshot 1](https://github.com/kepler444a-f/VibezCSM/blob/main/modernvibezcsmui.png?raw=true) |
+| Tkinter Python UI [Backup] | ![Screenshot 2](https://github.com/kepler444a-f/VibezCSM/blob/main/oldvibezcsmui.png?raw=true) |
 
 ---
 
